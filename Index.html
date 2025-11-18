@@ -1,0 +1,2187 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethical Coffee Regions Map</title>
+    <script src="https://d3js.org/d3.v6.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        header {
+            background: #875E3E;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1002;
+        }
+        
+        header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        
+        footer {
+            background: #875E3E;
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            font-size: 13px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1001;
+        }
+        
+        footer a {
+            color: #D9B18C;
+            text-decoration: none;
+            margin: 0 15px;
+        }
+        
+        footer a:hover {
+            text-decoration: underline;
+        }
+        
+        #map-container {
+            position: relative;
+            flex: 1;
+            width: 100vw;
+            min-height: 0;
+        }
+        
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .control-panel h2 {
+            margin: 0 0 15px 0;
+            font-size: 20px;
+        }
+        
+        .control-panel button {
+            padding: 10px 20px;
+            background: #875E3E;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .control-panel button:hover {
+            background: #6B4A2E;
+        }
+
+        .filter-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        .filter-section h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .filter-item {
+            margin-bottom: 12px;
+            font-size: 12px;
+        }
+
+        .filter-item label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .filter-item input[type="number"] {
+            width: 100%;
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .filter-item select {
+            width: 100%;
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .filter-buttons button {
+            flex: 1;
+            padding: 6px 10px;
+            font-size: 12px;
+            margin-top: 0;
+        }
+
+        .filter-buttons button.secondary {
+            background: #ccc;
+            color: #333;
+        }
+
+        .filter-buttons button.secondary:hover {
+            background: #aaa;
+        }
+
+        .active-filters {
+            margin-top: 10px;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        .active-filters strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .filter-tag {
+            display: inline-block;
+            background: #875E3E;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-right: 4px;
+            margin-bottom: 4px;
+        }
+        
+        .legend {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 12px;
+            margin-right: 8px;
+        }
+        
+        .country {
+            stroke: #fff;
+            stroke-width: 0.5px;
+            transition: fill-opacity 0.2s;
+            will-change: fill-opacity;
+        }
+        
+        .country:hover {
+            fill-opacity: 0.7;
+        }
+        
+        .region {
+            stroke: grey;
+            stroke-width: 0.5px;
+            transition: fill-opacity 0.2s;
+            will-change: fill-opacity;
+        }
+        
+        .region:hover {
+            fill-opacity: 0.8;
+            cursor: pointer;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            pointer-events: none;
+            font-size: 12px;
+            z-index: 1001;
+            display: none;
+            max-width: 300px;
+        }
+        
+        #metrics-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 999;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .metrics-header {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #875E3E;
+            padding-bottom: 10px;
+        }
+        
+        .metrics-header h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .metrics-header button {
+            padding: 8px 15px;
+            background: #875E3E;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-right: 10px;
+        }
+        
+        .metrics-content {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .metric-box {
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #875E3E;
+            border-radius: 4px;
+        }
+        
+        .metric-box h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .metric-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        
+        .metric-label {
+            width: 100px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .metric-fill {
+            flex: 1;
+            height: 20px;
+            background: linear-gradient(to right, #D9B18C, #875E3E);
+            border-radius: 3px;
+            margin: 0 10px;
+        }
+        
+        .metric-value {
+            width: 50px;
+            text-align: right;
+            color: #666;
+        }
+        
+        .roast-list {
+            margin-top: 15px;
+            font-size: 12px;
+        }
+        
+        .roast-item {
+            padding: 8px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .roast-item:hover {
+            background: #f0f0f0;
+            border-color: #875E3E;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .back-button {
+            padding: 8px 15px;
+            background: #ccc;
+            color: #333;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-right: 10px;
+        }
+        
+        .back-button:hover {
+            background: #bbb;
+        }
+
+        #sources-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .sources-content {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .sources-content h2 {
+            margin-top: 0;
+            color: #875E3E;
+        }
+
+        .sources-content ul {
+            list-style-position: inside;
+            line-height: 1.8;
+        }
+
+        .sources-close {
+            padding: 10px 20px;
+            background: #875E3E;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        .sources-close:hover {
+            background: #6B4A2E;
+        }
+
+        #metrics-details-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .metrics-details-content {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .metrics-details-content h2 {
+            margin-top: 0;
+            color: #875E3E;
+        }
+
+        .metric-detail {
+            margin-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .metric-detail:last-child {
+            border-bottom: none;
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f9f9f9;
+            cursor: pointer;
+            user-select: none;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .metric-header:hover {
+            background: #f0f0f0;
+        }
+
+        .metric-header h3 {
+            margin: 0;
+            color: #333;
+            font-size: 16px;
+            flex: 1;
+        }
+
+        .metric-toggle {
+            color: #875E3E;
+            font-size: 20px;
+            font-weight: bold;
+            width: 25px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .metric-toggle.open {
+            transform: rotate(180deg);
+        }
+
+        .metric-content {
+            display: none;
+            padding: 0 15px 15px 15px;
+            background: white;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .metric-content.open {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                max-height: 0;
+            }
+            to {
+                opacity: 1;
+                max-height: 200px;
+            }
+        }
+
+        .metric-content p {
+            margin: 0;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .metrics-details-close {
+            padding: 10px 20px;
+            background: #875E3E;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        .metrics-details-close:hover {
+            background: #6B4A2E;
+        }
+
+        #welcome-modal {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .welcome-content {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .welcome-content h2 {
+            margin-top: 0;
+            color: #875E3E;
+            font-size: 28px;
+        }
+
+        .welcome-content p {
+            color: #333;
+            line-height: 1.6;
+            margin: 15px 0;
+        }
+
+        .welcome-content ul {
+            color: #333;
+            line-height: 1.8;
+            margin: 15px 0;
+        }
+
+        .welcome-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+            justify-content: flex-end;
+        }
+
+        .welcome-buttons button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .welcome-buttons .primary {
+            background: #875E3E;
+            color: white;
+        }
+
+        .welcome-buttons .primary:hover {
+            background: #6B4A2E;
+        }
+
+        .welcome-buttons .secondary {
+            background: #ccc;
+            color: #333;
+        }
+
+        .welcome-buttons .secondary:hover {
+            background: #aaa;
+        }
+
+        .dont-show-again {
+            display: flex;
+            align-items: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .dont-show-again input {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Ethical Coffee Regions Map</h1>
+    </header>
+    
+    <div id="map-container" style="display: flex; flex-direction: column; height: 100vh;">
+        <div class="control-panel">
+            <h2>Global Coffee Regions</h2>
+            <div id="current-view">Viewing: World Map</div>
+            <button id="reset-btn" style="display: none;">← Back to World</button>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #875E3E;"></div>
+                    <span>Coffee Producing Countries</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e0e0e0;"></div>
+                    <span>Other Countries</span>
+                </div>
+            </div>
+            
+            <div id="stats" style="margin-top: 15px; font-size: 12px;"></div>
+
+            <div class="filter-section">
+                <h3>Metric Filters</h3>
+                <div class="filter-item">
+                    <label for="filter-metric">Metric:</label>
+                    <select id="filter-metric">
+                        <option value="">Select a metric...</option>
+                        <option value="Acidity">Acidity</option>
+                        <option value="Aftertaste">Aftertaste</option>
+                        <option value="Aroma">Aroma</option>
+                        <option value="Balance">Balance</option>
+                        <option value="Body">Body</option>
+                        <option value="Clean.cup">Clean Cup</option>
+                        <option value="Flavor">Flavor</option>
+                        <option value="Moisture">Moisture</option>
+                        <option value="Sweetness">Sweetness</option>
+                        <option value="Uniformity">Uniformity</option>
+                        <option value="Ethical">Ethical Coffee</option>
+                    </select>
+                </div>
+
+                <div class="filter-item" id="operator-container">
+                    <label for="filter-operator">Condition:</label>
+                    <select id="filter-operator">
+                        <option value="greater">Greater than (>)</option>
+                        <option value="less">Less than (<)</option>
+                        <option value="equal">Equal to (=)</option>
+                    </select>
+                </div>
+
+                <div class="filter-item" id="value-container">
+                    <label for="filter-value">Value (0-10):</label>
+                    <input type="number" id="filter-value" min="0" max="10" step="0.1" placeholder="e.g., 6.5">
+                </div>
+
+                <div class="filter-item" id="ethical-container" style="display: none;">
+                    <label for="filter-ethical">Ethical Status:</label>
+                    <select id="filter-ethical">
+                        <option value="">Select...</option>
+                        <option value="yes">Yes (Has Ethical Options)</option>
+                        <option value="no">No (No Ethical Options)</option>
+                    </select>
+                </div>
+
+                <div class="filter-buttons">
+                    <button onclick="window.coffeeMapInstance.addFilter()">Add Filter</button>
+                    <button class="secondary" onclick="window.coffeeMapInstance.clearFilters()">Clear All</button>
+                </div>
+
+                <div id="active-filters" class="active-filters" style="display: none;">
+                    <strong>Active Filters:</strong>
+                    <div id="filters-list"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="metrics-panel">
+            <div class="metrics-header">
+                <h3 id="metrics-title">Region Metrics</h3>
+                <button id="close-metrics-btn">Close</button>
+            </div>
+            <div class="metrics-content" id="metrics-content"></div>
+        </div>
+        
+        <svg id="map"></svg>
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+    
+    <div id="sources-modal">
+        <div class="sources-content">
+            <h2>Sources</h2>
+            <ul>
+                <li>Coffee Quality Data: <a href="https://github.com/jldbc/coffee-quality-database" target="_blank">Coffee Quality Database GitHub</a> (originally sourced from the <a href="https://database.coffeeinstitute.org/" target="_blank">Coffee Quality Institute</a>)</li>
+                <li>Global and Regional GeoJSON Data: <a href="https://gadm.org/download_country.html#google_vignette" target="_blank">GADM</a></li>
+                <li>Ethical Country Data: <a href="https://icocoffee.org/global-knowledge-hub/sustainability-dashboards/index.html" target="_blank">Coffee Sustainability Initiatives Map</a></li>
+                <li>Coffee Metrics Descriptions: <a href="https://database.coffeeinstitute.org/coffee/333644/grade" target="_blank">Coffee Quality Institute</a></li>
+                
+                <p>I used AI (specifically <a href="https://claude.ai" target="_blank">Claude</a>) in this project to assist me in creating some of the D3 code in this project. I had never used D3, Java or any HTML before this project. All design choices I implemented myself and I can happily say I learned a lot about HTML during this project. <a href="" target="_blank">Here</a> is a link to my open respository with all code required to create this dashboard. </p>
+            </ul>
+            <button class="sources-close" onclick="window.coffeeMapInstance.closeSources()">Close</button>
+        </div>
+    </div>
+
+    <div id="metrics-details-modal">
+        <div class="metrics-details-content">
+            <h2>Coffee Quality Metrics</h2>
+            
+            <div class="metric-detail">
+                <div class="metric-header" onclick="this.querySelector('.metric-toggle').classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <h3>Aroma</h3>
+                    <div class="metric-toggle">▼</div>
+                </div>
+                <div class="metric-content">
+                    <p>The aromatic aspects include Fragrance (defined as the smell of the ground coffee when still dry) and Aroma (the smell of the coffee when infused with hot water). One can evaluate this at three distinct steps in the cupping process: (1) sniffing the grounds placed into the cup before pouring water onto the coffee; (2) sniffing the aromas released while breaking the crust; and (3) sniffing the aromas released as the coffee steeps. Specific aromas can be noted under "qualities" and the intensity of the dry, break, and wet aroma aspects noted on the 5-point vertical scales. The score finally given should reflect the preference of all three aspects of a sample's Fragrance/Aroma.</p>
+                </div>
+            </div>
+
+            <div class="metric-detail">
+                <div class="metric-header" onclick="this.querySelector('.metric-toggle').classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <h3>Flavor</h3>
+                    <div class="metric-toggle">▼</div>
+                </div>
+                <div class="metric-content">
+                    <p>Flavor represents the coffee's principal character, the "mid-range" notes, in between the first impressions given by the coffee's first aroma and acidity to its final aftertaste. It is a combined impression of all the gustatory (taste bud) sensations and retro-nasal aromas that go from the mouth to nose. The score given for Flavor should account for the intensity, quality and complexity of its combined taste and aroma, experienced when the coffee is slurped into the mouth vigorously so as to involve the entire palate in the evaluation.</p>
+                </div>
+            </div>
+
+            <div class="metric-detail">
+                <div class="metric-header" onclick="this.querySelector('.metric-toggle').classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <h3>Aftertaste</h3>
+                    <div class="metric-toggle">▼</div>
+                </div>
+                <div class="metric-content">
+                    <p>Aftertaste is defined as the length of positive flavor (taste and aroma) qualities emanating from the back of the palate and remaining after the coffee is expectorated or swallowed. If the aftertaste were short or unpleasant, a lower score would be given.</p>
+                </div>
+            </div>
+
+            <div class="metric-detail">
+                <div class="metric-header" onclick="this.querySelector('.metric-toggle').classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <h3>Acidity</h3>
+                    <div class="metric-toggle">▼</div>
+                </div>
+                <div class="metric-content">
+                    <p>Acidity is often described as "brightness" when favorable or "sour" when unfavorable. At its best, acidity contributes to a coffee's liveliness, sweetness, and fresh-fruit character and is almost immediately experienced and evaluated when the coffee is first slurped into the mouth. Acidity that is overly intense or dominating may be unpleasant, however, and excessive acidity may not be appropriate to the flavor profile of the sample. The final score marked on the horizontal tick-mark scale should reflect the panelist's perceived quality for the Acidity relative to the expected flavor profile based on origin characteristics and/or other factors (degree of roast, intended use, etc.). Coffees expected to be high in Acidity, such as a Kenya coffee, or coffees expected to be low in Acidity, such as a Sumatra coffee, can receive equally high preference scores although their intensity rankings will be quite different.</p>
+                </div>
+            </div>
+
+            <div class="metric-detail">
+                <div class="metric-header" onclick="this.querySelector('.metric-toggle').classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <h3>Body</h3>
+                    <div class="metric-toggle">▼</div>
+                </div>
+                <div class="metric-content">
+                    <p>The weight and texture of the coffee in your mouth. This is determined by the amount of oils and suspended solids. Higher scores indicate a fuller, richer body.</p>
+                </div>
+            </div>
+
+            <div class="metric-detail">
+                <div class="metric-header" onclick="this.querySelector('.metric-toggle').classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <h3>Balance</h3>
+                    <div class="metric-toggle">▼</div>
+                </div>
+                <div class="metric-content">
+                    <p>How well all the flavor components work together harmoniously. A well-balanced coffee has no single dominant flavor that overwhelms others. Higher scores indicate excellent harmony between all elements.</p>
+                </div>
+            </div>
+
+            <div class="metric-detail">
+                <div class="metric-header" onclick="this.querySelector('.metric-toggle').classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <h3>Sweetness</h3>
+                    <div class="metric-toggle">▼</div>
+                </div>
+                <div class="metric-content">
+                    <p>Sweetness refers to a pleasing fullness of flavor as well as any obvious sweetness and its perception is the result of the presence of certain carbohydrates. The opposite of sweetness in this context is sour, astringency or "green" flavors. This quality may not be directly perceived as in sucrose-laden products such as soft drinks, but will affect other flavor attributes. 2 points are awarded for each cup displaying this attribute for a maximum score of 10 points.</p>
+                </div>
+            </div>
+
+            <div class="metric-detail">
+                <div class="metric-header" onclick="this.querySelector('.metric-toggle').classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <h3>Clean Cup</h3>
+                    <div class="metric-toggle">▼</div>
+                </div>
+                <div class="metric-content">
+                    <p>Clean Cup refers to a lack of interfering negative impressions from first ingestion to final aftertaste, a "transparency" of cup. In evaluating this attribute, notice the total flavor experience from the time of the initial ingestion to final swallowing or expectoration. Any non-coffee like tastes or aromas will disqualify an individual cup. 2 points are awarded for each cup displaying the attribute of Clean Cup.</p>
+                </div>
+            </div>
+
+            <div class="metric-detail">
+                <div class="metric-header" onclick="this.querySelector('.metric-toggle').classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <h3>Uniformity</h3>
+                    <div class="metric-toggle">▼</div>
+                </div>
+                <div class="metric-content">
+                    <p>Uniformity refers to consistency of flavor of the different cups of the sample tasted. If the cups taste different, the rating of this aspect would not be as high. 2 points are awarded for each cup displaying this attribute, with a maximum of 10 points if all 5 cups are the same.</p>
+                </div>
+            </div>
+
+            <div class="metric-detail">
+                <div class="metric-header" onclick="this.querySelector('.metric-toggle').classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <h3>Moisture</h3>
+                    <div class="metric-toggle">▼</div>
+                </div>
+                <div class="metric-content">
+                    <p>The percentage of water content in the green (unroasted) coffee beans. Proper moisture levels are essential for consistent roasting and flavor development. Optimal levels typically range from 10-13%.</p>
+                </div>
+            </div>
+
+            <button class="metrics-details-close" onclick="window.coffeeMapInstance.closeMetricsDetails()">Close</button>
+        </div>
+    </div>
+
+    <div id="welcome-modal">
+        <div class="welcome-content">
+            <h2>Welcome to the Ethical Coffee Regions Map</h2>
+            <p>Explore global coffee production with a focus on ethical and sustainable sourcing. This interactive map helps you discover where coffee is grown and understand the quality metrics of different regions.</p>
+            
+            <h3 style="color: #875E3E; margin-top: 25px;">How to Navigate:</h3>
+            <ul>
+                <li><strong>World Map:</strong> Click on any coffee-producing country (shown in brown) to explore its regions</li>
+                <li><strong>Regional View:</strong> Darker brown shades indicate higher coffee production. Click on a region to see detailed metrics and roasts</li>
+                <li><strong>Metrics:</strong> View average quality ratings and individual roast data with scores from 0-10</li>
+                <li><strong>Filters:</strong> Use the left panel to filter coffee by quality metrics or ethical certification status</li>
+                <li><strong>Reset:</strong> Use the "Back to World" button to return to the global view</li>
+            </ul>
+
+            <h3 style="color: #875E3E; margin-top: 25px;">Quality Metrics:</h3>
+            <p>Each coffee is rated on attributes like Aroma, Flavor, Body, Acidity, Balance, and more. Higher scores (closer to 10) indicate better quality.</p>
+
+            <div class="dont-show-again">
+                <input type="checkbox" id="dontShowAgain" />
+                <label for="dontShowAgain" style="cursor: pointer;">Don't show this again</label>
+            </div>
+
+            <div class="welcome-buttons">
+                <button class="secondary" onclick="window.coffeeMapInstance.closeWelcome()">Close</button>
+                <button class="primary" onclick="window.coffeeMapInstance.closeWelcome()">Get Started</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div>
+            <a href="#" onclick="window.coffeeMapInstance.showSources(); return false;">Sources</a>
+            |
+            <a href="#" onclick="window.coffeeMapInstance.showMetricsDetails(); return false;">Metrics</a>
+            |
+            <a href="#" onclick="window.coffeeMapInstance.showWelcome(); return false;">Help</a>
+            |
+            <span><a style="color: #D9B18C; text-decoration: none;">Built by:</a> <strong><a href="https://www.linkedin.com/in/andrewplattel/" target="_blank" style="color: #D9B18C; text-decoration: none;">Andrew Plattel</a></strong></span>
+        </div>
+    </footer>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            csvPath: 'combined_coffee_data.csv',
+            worldGeoJsonPath: 'world.geojson',
+            regionsGeoJsonPath: 'coffee_regions.geojson',
+            
+            countryColumn: 'Country.of.Origin',
+            regionColumn: 'Region',
+            scoreColumn: 'Total.Cup.Points',
+            bagsColumn: 'Number.of.Bags',
+            speciesColumn: 'Species',
+            farmColumn: 'Farm.Name',
+            partnerColumn: 'In.Country.Partner',
+            
+            worldCountryProperty: 'NAME',
+            regionCountryProperty: 'COUNTRY',
+            regionNameProperty: 'NAME_1',
+            
+            metricColumns: ['Acidity', 'Aftertaste', 'Aroma', 'Balance', 'Body', 'Clean.cup', 'Flavor', 'Moisture', 'Sweetness', 'Uniformity']
+        };
+
+        const REGION_MAPPINGS = {
+            // Angola
+            'kwanza norte province, angola': 'KwanzaNorte',
+
+            // Brazil
+            'south of minas': 'MinasGerais',
+            'vale da grama': 'MinasGerais',
+            'sul de minas - carmo de minas': 'MinasGerais',
+            'grama valley': 'MinasGerais',
+            'mountains of minas gerais': 'MinasGerais',
+            'mmm': 'MinasGerais',
+            'cerrado': 'MinasGerais',
+            'minas gerais, br': 'MinasGerais',
+            'carmo de minas': 'MinasGerais',
+            'campos altos - cerrado': 'MinasGerais',
+            'mogiana': 'SãoPaulo',
+            'chapadão de ferro (cerrado mineiro)': 'MinasGerais',
+            'high mogiana': 'SãoPaulo',
+            'sul de minas': 'MinasGerais',
+            'monte carmelo': 'MinasGerais',
+            'brazil matas de minas': 'MinasGerais',
+            'mantiqueira de minas': 'MinasGerais',
+            'matas de minas': 'MinasGerais',
+            'alta paulista (sao paulo)': 'SãoPaulo',
+            'cerrado - monte carmelo - minas gerais': 'MinasGerais',
+            
+            // Burundi
+            'kayanza': 'Kayanza',
+            'mumirwa': 'Muramvya',
+            
+            // China
+            'yunnan': 'Yunnan',
+            'dehong prefecture': 'Yunnan',
+            'menglian': 'Yunnan',
+            'xishuangbanna prefecture': 'Yunnan',
+            
+            // Colombia
+            'tolima': 'Tolima',
+            'huila': 'Huila',
+            'santander': 'Santander',
+            'pasto': 'Nariño',
+            'cundinamarca': 'Cundinamarca',
+            'cauca': 'Cauca',
+            'pitalito': 'Huila',
+            'la plata': 'Huila',
+            'nariño': 'Nariño',
+            'huila supremo': 'Huila',
+            'guayata': 'Boyacá',
+            'eje cafetero': 'Caldas',
+            'antioquia': 'Antioquia',
+            'south huila': 'Huila',
+            'pereira': 'Risaralda',
+            
+            // Costa Rica
+            'san ramon': 'Alajuela',
+            'west and central valley': 'SanJosé',
+            'west valley': 'SanJosé',
+            'tarrazu': 'SanJosé',
+            'costa rica': 'SanJosé',
+            'tres rios': 'Cartago',
+            'valle central': 'SanJosé',
+            'central valley': 'SanJosé',
+            'turrialba': 'Cartago',
+            'occidental': 'SanJosé',
+            'naranjo': 'Alajuela',
+            'brunca': 'Puntarenas',
+            'san rafael': 'Heredia',
+
+            //Cote d'Ivoire
+            'cnra station of divo': 'Gôh-Djiboua',
+
+            // Ecuador
+            'san juan, playas': 'Pichincha',
+            'province of manabi, ecuador': 'Manabi',
+
+            // El Salvador
+            'santa ana': 'SantaAna',
+            'el balsamo, quezaltepec': 'SanSalvador',
+            'apaneca': 'Ahuachapán',
+            'ataco, apaneca - ilamatepec mountain range': 'Ahuachapán',
+            'department of ahuachapan, municipality of apan': 'Ahuachapán',
+            'cacahuatique': 'SanMiguel',
+            
+            // Ethiopia
+            'guji-hambela': 'Oromia',
+            'oromia': 'Oromia',
+            'oromiya': 'Oromia',
+            'snnp/kaffa zone,gimbowereda': 'SouthernNations,Nationalities',
+            'yirgacheffe': 'SouthernNations,Nationalities',
+            'gedio': 'SouthernNations,Nationalities',
+            'sidamo': 'Oromia',
+            'addis ababa': 'AddisAbeba',
+            'kefa zone, gimbo distict, at a place called woka araba, south west ethiopia.': 'SouthernNations,Nationalities',
+            'aricha': 'Oromia',
+            'limu': 'Oromia',
+            'snnprg; kafa; telo woreda; shada kebele': 'SouthernNations,Nationalities',
+            'ethiopia, sidamo': 'Oromia',
+            'blida,kercha,guji,oromia': 'Oromia',
+            'kelem welega': 'Oromia',
+            
+            // Guatemala
+            'nuevo oriente': 'Jutiapa',
+            'acatenango': 'Chimaltenango',
+            'huehuetenango': 'Huehuetenango',
+            'oriente': 'Jutiapa',
+            'chuva, san marcos': 'SanMarcos',
+            'jalapa': 'Jalapa',
+            'el tumbador, san marcos': 'SanMarcos',
+            'antigua': 'Sacatepéquez',
+            'san marcos': 'SanMarcos',
+            'solola': 'Sololá',
+            'norte': 'Petén',
+            'guatemala': 'Guatemala',
+            'aldea xeucalvitz, ixil region, quiche department': 'Quiché',
+            'quetzaltenango': 'Quezaltenango',
+            'sacatepequez, guatemala': 'Sacatepéquez',
+            'atitlan': 'Sololá',
+            'la reforma, san marcos': 'SanMarcos',
+            'santa rosa': 'SantaRosa',
+            'el progreso': 'ElProgreso',
+            'san lucas toliman, solola': 'Sololá',
+            'orient': 'Jutiapa',
+            'occidente': 'Quezaltenango',
+            
+            // Haiti
+            'thiotte, haiti': 'Sud-Est',
+            'dondon, haiti': 'Nord',
+            'haiti': 'Ouest',
+            'marmelade': 'Nord',
+            "department d'artibonite , haiti": "L'Artibonite",
+            
+            // Honduras
+            'comayagua': 'Comayagua',
+            'marcala': 'LaPaz',
+            'central region': 'FranciscoMorazán',
+            'san marcos': 'SantaBárbara',
+            'comayagua, honduras': 'Comayagua',
+            'el paraíso': 'ElParaíso',
+            'guinope el paraíso': 'ElParaíso',
+            'occidental': 'Copán',
+            'western region': 'Copán',
+            'siguatepeque, comayagua': 'Comayagua',
+            'ocotepeque': 'Ocotepeque',
+            'intibuca': 'Intibucá',
+            
+            // India
+            'chickmangalore': 'Karnataka',
+            'chikmagalur': 'Karnataka',
+            'chikmagalur karnataka indua': 'Karnataka',
+            'chikmagalur karnataka india': 'Karnataka',
+            'chikmagalur karnataka': 'Karnataka',
+            
+            // Indonesia
+            'sulawesi': 'SulawesiSelatan',
+            'lintong': 'SumateraUtara',
+            'temanggung, indonesia': 'JawaTengah',
+            'sumatra brastagi': 'SumateraUtara',
+            'aceh tengah': 'Aceh',
+            'east java': 'JawaTimur',
+            'bener meriah': 'Aceh',
+            'bondowoso': 'JawaTimur',
+            'dolok sanggul': 'SumateraUtara',
+            'sapan toraja': 'SulawesiSelatan',
+            'aceh': 'Aceh',
+            'bali': 'Bali',
+            'aceh gayo': 'Aceh',
+            'lington nihuta': 'SumateraUtara',
+            'ijen': 'JawaTimur',
+            'indonesia': 'Aceh',
+            'berastagi': null,
+            
+            // Japan
+            'ada okinawa japan': 'Okinawa',
+            
+            // Kenya
+            'muranga': "Murang'a",
+            'nyeri': 'Nyeri',
+            'kiambu': 'Kiambu',
+            'kirinyaga': 'Kirinyaga',
+            'central kenya': 'Nyeri',
+            'kenya': 'Nyeri',
+            'blend': 'Nyeri',
+            'meru county': 'Meru',
+            
+            // Laos
+            'paksong,laos': 'Champasak',
+            'lao p.d.r.': 'Champasak',
+            
+            // Malawi
+            'mzuzu': 'Mzimba',
+            'kakoma': 'Mzimba',
+            'southern- zomba': 'Zomba',
+            
+            // Mauritius
+            'chamarel (south west)': 'BlackRiver',
+            
+            // Mexico
+            'xalapa': 'Veracruz',
+            'veracruz': 'Veracruz',
+            'mexico': 'Chiapas',
+            'coatepec': 'Veracruz',
+            'el remudadero': 'Veracruz',
+            'hustusco': 'Veracruz',
+            'jaltenango': 'Chiapas',
+            'tapachula': 'Chiapas',
+            'tuxtla gutierrez': 'Chiapas',
+            'san pedro cotzilnam': 'Chiapas',
+            'la concordia, chiapas': 'Chiapas',
+            'santo domingo cacalotepec': 'Oaxaca',
+            'xicotepec de juarez': 'Puebla',
+            'la concordia': 'Chiapas',
+            'la yerbabuena': 'Chiapas',
+            'petatlan': 'Guerrero',
+            'huazalingo, hidalgo': 'Hidalgo',
+            'chiapas, jaltenango': 'Chiapas',
+            'chilón': 'Chiapas',
+            'totutla': 'Veracruz',
+            'nayarit': 'Nayarit',
+            'chiapas': 'Chiapas',
+            'sierra madre occidental': 'Chiapas',
+            'cuarenteño': 'Veracruz',
+            'fortín de las flores': 'Veracruz',
+            'tlanchinol, hidalgo': 'Hidalgo',
+            'san bartolo tutotepec': 'Hidalgo',
+            'san isidro': 'Chiapas',
+            'santa catarina juquila': 'Oaxaca',
+            'atoyac de alvarez': 'Guerrero',
+            'la cumbre': 'Veracruz',
+            'la yerba': 'Chiapas',
+            'mahuixtlan': 'Veracruz',
+            'oaxaca': 'Oaxaca',
+            'colima': 'Colima',
+            'zapotitlan de mendez': 'Puebla',
+            'zihuatanejo de azueta': 'Guerrero',
+            'progreso santa rosa teocelo': 'Veracruz',
+            'fln mirador': 'Veracruz',
+            'jaltocan, hidalgo': 'Hidalgo',
+            'calnali, hidalgo': 'Hidalgo',
+            'juquila': 'Oaxaca',
+            'canoas': 'Veracruz',
+            'altotonga': 'Veracruz',
+            'coscomatepec': 'Veracruz',
+            'chapulhuacan, hidalgo': 'Hidalgo',
+            'siltepec el triunfo, chiapas, mexico': 'Chiapas',
+            'tenango de doria, hidalgo': 'Hidalgo',
+            'tepictla': 'Puebla',
+            'yajalon': 'Chiapas',
+            'sacún palma, municipio de chilón, chiapas': 'Chiapas',
+            'amatenango de la frontera': 'Chiapas',
+            'temaxcalapa': 'Veracruz',
+            'manzanillo': 'Colima',
+            'siltepec el triunfo': 'Chiapas',
+            'coatepec, coatepec': 'Veracruz',
+            'motozintla': 'Chiapas',
+            'san fernando': 'Chiapas',
+            'santo reyes nopala': 'Oaxaca',
+            'santa maria sitepec': 'Chiapas',
+            'talpa de allende': 'Jalisco',
+            'motozintla, chiapas': 'Chiapas',
+            'adolfo lopez mateos': 'México',
+            'ixhuatlan del cafe': 'Veracruz',
+            'el desmoronado, talpan de allende jalisco': 'Jalisco',
+            'zaragoza itundujia': 'Oaxaca',
+            'pochutla': 'Oaxaca',
+            'escuitla': 'Chiapas',
+            'sierra fraylesca, chiapas': 'Chiapas',
+            'san miguel del puerto': 'Oaxaca',
+            'tepetzingo': 'Puebla',
+            'zentla': 'Veracruz',
+            'pluma hidalogo, oaxaca': 'Oaxaca',
+            'tlacuilotepec': 'Puebla',
+            'iliatenco, guerrero': 'Guerrero',
+            'ohuapan, tlaltetela': 'Veracruz',
+            'yecuatla': 'Veracruz',
+            'cofradia de suchitlan': 'Colima',
+            'sierra, chiapas': 'Chiapas',
+            'villa talea de castro': 'Oaxaca',
+            'los angeles': 'Puebla',
+            'xochitonalco, huautla': 'Puebla',
+            'cordoba': 'Veracruz',
+            'ocosingo': 'Chiapas',
+            'huautla de jimenez': 'Oaxaca',
+            'menglian': 'Chiapas',
+            'chocaman, veracruz': 'Veracruz',
+            'sierra alta mixe y zapoteca': 'Oaxaca',
+            'tlatlauquitepec': 'Puebla',
+            'sierra norte yajalon, chiapas': 'Chiapas',
+            'juchique de ferrer': 'Veracruz',
+            
+            // Myanmar
+            'ywar ngan': 'Mandalay',
+            'ywar ngan township': 'Mandalay',
+            'pyinoolwin': 'Mandalay',
+            'pyin oo lwin': 'Mandalay',
+            'yauk sauk, shan state': 'Shan',
+            'doe kwin, pyin oo lwin': 'Mandalay',
+            
+            // Nicaragua
+            'jinotega': 'Jinotega',
+            'matagalpa': 'Matagalpa',
+            'jalapa': 'NuevaSegovia',
+            'dipilto, nueva segovia': 'NuevaSegovia',
+            'nueva segovia': 'NuevaSegovia',
+            
+            // Panama
+            'boquete': 'Chiriquí',
+            
+            // Papua New Guinea
+            'eastern highlands province': 'EasternHighlands',
+            
+            // Peru
+            'cajamarca': 'Cajamarca',
+            'penachi, cecanor': 'Cajamarca',
+            'peru': 'Cajamarca',
+            'puno': 'Puno',
+            'huanuco': 'Huánuco',
+            'san ignacio': 'Cajamarca',
+            
+            // Philippines
+            'bukidnon, mindanao, philppines': 'Bukidnon',
+            'asia pacific': 'Bukidnon',
+            'davao city, region 11': 'DavaodelSur',
+            'corillera administrative': 'Benguet',
+            'benguet, mountain province': 'Benguet',
+            
+            // Rwanda
+            'gicumbi': 'Amajyaruguru',
+            
+            // Tanzania
+            'mbeya': 'Mbeya',
+            'shizingo village': 'Mbeya',
+            'arusha': 'Arusha',
+            'nkure- meru': 'Arusha',
+            'karatu northern': 'Arusha',
+            'moshi': 'Kilimanjaro',
+            'mbinga': 'Ruvuma',
+            'kilimanjaro': 'Kilimanjaro',
+            'karatu arusha': 'Arusha',
+            'ikand village': 'Ruvuma',
+            'arusha meru': 'Arusha',
+            'ruvuma': 'Ruvuma',
+            'northern': 'Arusha',
+            'ilomba vilage, mbozi': 'Mbeya',
+            'ngorogoro': 'Arusha',
+            'meru': 'Arusha',
+            'oldeani , mongola': 'Arusha',
+            'karatu ngorogoro': 'Arusha',
+            'ruvuma, mbinga': 'Ruvuma',
+            'iwala village, mbeya rural': 'Mbeya',
+            'manyara, karatu': 'Manyara',
+            'mkuu rombo': 'Kilimanjaro',
+
+            // Taiwan
+            'leye, alishan township, chiayi county': 'Chiayi',
+            'natou county': 'Nantou',
+            'dongshan dist., tainan city 臺南市東山區': 'Tainan',
+            'taichung xinshe 台中市新社區': 'Taichung',
+            'mountain ali, taiwan': 'Chiayi',
+            '國姓鄉 guoshing township': 'Nantou',
+            'nanxi dist., tainan city 臺南市楠西區': 'Tainan',
+            'leye, alishan township, chiayi county 嘉義阿里山樂野村': 'Chiayi',
+            '台灣': 'Chiayi',
+            '台中和平區': 'Taichung',
+            '台南市東山區 (dongshan dist., tainan city)': 'Tainan',
+            '南投國姓': 'Nantou',
+            'chiayi alishan 嘉義縣阿里山鄉': 'Chiayi',
+            '嘉義阿里山': 'Chiayi',
+            '台東太麻里': 'Taitung',
+            '台南市東山區( dongshan dist., tainan city)': 'Tainan',
+            'changhua baguashan 彰化市八卦山': 'Changhua',
+            'nantou': 'Nantou',
+            'yunlin 雲林縣石壁': 'Yunlin',
+            '古坑鄉荷包村尖山坑60號': 'Yunlin',
+            '苗栗三灣': 'Miaoli',
+            'dongshan dist., tainan city 台南市東山區': 'Tainan',
+            'taiwan': 'Chiayi',
+            '台中新社': 'Taichung',
+            'taichung taiping 台中市太平區': 'Taichung',
+            'new taipei zhonghe 新北市中和區': 'NewTaipei',
+            'chiayi fanlu嘉義縣番路鄉': 'Chiayi',
+            '苗栗泰安': 'Miaoli',
+            'yunlin gukeng he bao 雲林縣古坑鄉荷苞村': 'Yunlin',
+            'taiwu township , pingtung county 屏東縣泰武鄉': 'Pingtung',
+            'baihe dist., tainan city 臺南市白河區': 'Tainan',
+            'taiwan': 'Taiwan',
+            
+            // Thailand
+            'chiang rai': 'ChiangRai',
+            'thailand': 'ChiangRai',
+            'chiang rai thailand': 'ChiangRai',
+            'chiangrai': 'ChiangRai',
+            'doi chaang village, chiang rai, thialand': 'ChiangRai',
+            'phahi': 'ChiangRai',
+            
+            // Uganda
+            'kapchorwa eastern': 'Kapchorwa',
+            'eastern uganda': 'Mbale',
+            'sipi, mt elgon': 'Kapchorwa',
+            'eastern': 'Mbale',
+            'bulambuli eastern region': 'Kapchorwa',
+            'kapchorwa': 'Kapchorwa',
+            'mbale': 'Mbale',
+            'kasese': 'Kasese',
+            'mt. rwenzori': 'Kasese',
+            'west nile': 'Arua',
+            'kasese, mt. rwenzori': 'Kasese',
+            'mt elgon': 'Kapchorwa',
+            'sheema south western': 'Kasese',
+            'luwero central region': 'Kampala',
+            'central': 'Kapchorwa',
+            'western': 'Kasese',
+            'iganga namadrope eastern': 'Mbale',
+            'south western': 'Kasese',
+            
+            // United States (Hawaii)
+            'kona': 'Hawaii',
+            
+            // United States (Puerto Rico)
+            'yauco region': 'Yauco',
+            
+            // Vietnam
+            'dala': 'LâmĐồng',
+            'vietnam cau dat': 'LâmĐồng',
+            'don duong': 'LâmĐồng',
+            'vietnam tutra': 'LâmĐồng',
+            'vietnam': 'LâmĐồng',
+            
+            // Zambia
+            'mubuyu estate': 'Central'
+        };
+
+        // Close modals when clicking outside
+        window.addEventListener('click', (event) => {
+            const sourcesModal = d3.select('#sources-modal').node();
+            if (event.target === sourcesModal) {
+                window.coffeeMapInstance.closeSources();
+            }
+            
+            const metricsModal = d3.select('#metrics-details-modal').node();
+            if (event.target === metricsModal) {
+                window.coffeeMapInstance.closeMetricsDetails();
+            }
+            
+            const welcomeModal = d3.select('#welcome-modal').node();
+            if (event.target === welcomeModal) {
+                window.coffeeMapInstance.closeWelcome();
+            }
+        });
+
+        // Bad data mappings to exclude
+        const EXCLUDE_REGION_MAPPINGS = new Set([
+            'antioquia',
+            'berastagi',
+            'central america'
+        ]);
+
+        // Country name mappings
+        const COUNTRY_MAPPINGS = {
+            'Tanzania, United Republic Of': 'Tanzania',
+            'United States (Hawaii)': 'United States of America',
+            'United States (Puerto Rico)': 'Puerto Rico',
+            "Cote d?Ivoire": "Côte d'Ivoire",
+            "United States": 'United States of America'
+        };
+
+        // Ethical coffee countries
+        const ETHICAL_COUNTRIES = new Set([
+            "Afghanistan", "Angola", "Bangladesh", "Benin", "Bhutan", "Bolivia", "Brazil",
+            "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "China", "Colombia",
+            "Cook Islands", "Costa Rica", "Côte d'Ivoire", "Cuba", "Dominican Republic",
+            "Ecuador", "El Salvador", "Ethiopia", "Fiji", "Gabon", "Ghana", "Global",
+            "Guatemala", "Haiti", "Honduras", "India", "Indonesia", "Iran", "Iraq",
+            "Jamaica", "Kazakhstan", "Kenya", "Kiribati", "Kyrgyzstan", "Laos", "Liberia",
+            "Madagascar", "Malawi", "Malaysia", "Maldives", "Marshall Islands", "Mauritius",
+            "Mexico", "Micronesia", "Mongolia", "Mozambique", "Myanmar", "Nauru", "Nepal",
+            "Nicaragua", "Niue", "North Korea", "Pakistan", "Palau", "Panama",
+            "Papua New Guinea", "Peru", "Philippines", "Rwanda", "Samoa", "Sierra Leone",
+            "Solomon Islands", "South Africa", "Sri Lanka", "Tajikistan", "Tanzania",
+            "Thailand", "Timor-Leste", "Togo", "Tonga", "Turkmenistan", "Tuvalu",
+            "Uganda", "United States of America", "Uzbekistan", "Vanuatu", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
+        ]);
+
+        // Normalize names for matching
+        function normalizeName(name) {
+            if (!name) return '';
+            const normalized = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return normalized.toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9]/g, '')
+                .replace(/\s+/g, '');
+        }
+
+        // Main application
+        class CoffeeMap {
+            constructor() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.currentView = 'world';
+                this.selectedCountry = null;
+                this.coffeeData = null;
+                this.worldData = null;
+                this.regionsData = null;
+                this.selectedRoast = null;
+                this.filters = [];
+                
+                this.svg = d3.select('#map')
+                    .attr('width', this.width)
+                    .attr('height', this.height);
+                
+                this.g = this.svg.append('g');
+                this.tooltip = d3.select('#tooltip');
+                
+                this.projection = d3.geoNaturalEarth1()
+                    .scale(this.width / 5)
+                    .translate([this.width / 2, this.height / 2]);
+                
+                this.path = d3.geoPath().projection(this.projection);
+                
+                this.zoom = d3.zoom()
+                    .scaleExtent([1, 32])
+                    .on('zoom', (event) => {
+                        this.g.attr('transform', event.transform);
+                    });
+                
+                this.svg.call(this.zoom);
+                
+                d3.select('#reset-btn').on('click', () => this.resetView());
+                d3.select('#close-metrics-btn').on('click', () => this.closeMetrics());
+                d3.select('#filter-metric').on('change', () => this.updateFilterInputs());
+                
+                window.coffeeMapInstance = this;
+                
+                this.init();
+            }
+
+            applyFilters(data) {
+                if (this.filters.length === 0) return data;
+                
+                return data.filter(d => {
+                    return this.filters.every(filter => {
+                        if (filter.metric === 'Ethical') {
+                            const isEthical = ETHICAL_COUNTRIES.has(d[CONFIG.countryColumn]);
+                            if (filter.value === 'yes') {
+                                return isEthical;
+                            } else {
+                                return !isEthical;
+                            }
+                        }
+                        
+                        const value = +d[filter.metric];
+                        if (isNaN(value)) {
+                            return false;
+                        }
+                        
+                        if (filter.operator === 'greater') {
+                            return value > filter.value;
+                        }
+                        if (filter.operator === 'less') return value < filter.value;
+                        if (filter.operator === 'equal') return Math.abs(value - filter.value) < 0.01;
+                        return true;
+                    });
+                });
+            }
+
+            addFilter() {
+                const metric = d3.select('#filter-metric').property('value');
+                
+                let operator, value;
+                if (metric === 'Ethical') {
+                    value = d3.select('#filter-ethical').property('value');
+                    operator = 'ethical';
+                } else {
+                    operator = d3.select('#filter-operator').property('value');
+                    value = parseFloat(d3.select('#filter-value').property('value'));
+                }
+
+                if (!metric || !value) {
+                    alert('Please select a metric and enter a value');
+                    return;
+                }
+
+                this.filters.push({ metric, operator, value });
+                this.updateFilterDisplay();
+                d3.select('#filter-metric').property('value', '');
+                d3.select('#filter-value').property('value', '');
+                d3.select('#filter-ethical').property('value', '');
+                this.updateFilterInputs();
+                this.refreshView();
+            }
+
+            updateFilterInputs() {
+                const metric = d3.select('#filter-metric').property('value');
+                const operatorContainer = d3.select('#operator-container');
+                const valueContainer = d3.select('#value-container');
+                const ethicalContainer = d3.select('#ethical-container');
+
+                if (metric === 'Ethical') {
+                    operatorContainer.style('display', 'none');
+                    valueContainer.style('display', 'none');
+                    ethicalContainer.style('display', 'block');
+                } else {
+                    operatorContainer.style('display', 'block');
+                    valueContainer.style('display', 'block');
+                    ethicalContainer.style('display', 'none');
+                }
+            }
+
+            clearFilters() {
+                this.filters = [];
+                this.updateFilterDisplay();
+                this.refreshView();
+            }
+
+            updateFilterDisplay() {
+                const filtersList = d3.select('#filters-list');
+                const activeFilters = d3.select('#active-filters');
+
+                if (this.filters.length === 0) {
+                    activeFilters.style('display', 'none');
+                    return;
+                }
+
+                activeFilters.style('display', 'block');
+                filtersList.html('');
+
+                this.filters.forEach((f, i) => {
+                    const tag = filtersList.append('div').attr('class', 'filter-tag');
+                    let filterText = '';
+                    
+                    if (f.metric === 'Ethical') {
+                        filterText = `Ethical: ${f.value === 'yes' ? 'Yes' : 'No'}`;
+                    } else {
+                        const operatorText = f.operator === 'greater' ? '>' : f.operator === 'less' ? '<' : '=';
+                        filterText = `${f.metric} ${operatorText} ${f.value}`;
+                    }
+                    
+                    tag.html(`${filterText} <a href="#" onclick="window.coffeeMapInstance.removeFilter(${i}); return false;" style="color: white; margin-left: 4px;">✕</a>`);
+                });
+            }
+
+            removeFilter(index) {
+                this.filters.splice(index, 1);
+                this.updateFilterDisplay();
+                this.refreshView();
+            }
+
+            refreshView() {
+                this.closeMetrics();
+                if (this.currentView === 'world') {
+                    this.drawWorldMap();
+                } else if (this.currentView === 'region' && this.selectedCountry) {
+                    this.drawRegionMap(this.selectedCountry);
+                } else {
+                    this.drawWorldMap();
+                }
+            }
+            
+            async init() {
+                try {
+                    const [csvData, worldGeoJson, regionsGeoJson] = await Promise.all([
+                        d3.csv(CONFIG.csvPath),
+                        d3.json(CONFIG.worldGeoJsonPath),
+                        d3.json(CONFIG.regionsGeoJsonPath)
+                    ]);
+                    
+                    this.coffeeData = csvData.filter(d => 
+                        d[CONFIG.regionColumn] && 
+                        d[CONFIG.regionColumn].toLowerCase() !== 'nan' &&
+                        d[CONFIG.countryColumn] &&
+                        d[CONFIG.countryColumn].toLowerCase() !== 'nan'
+                    );
+                    
+                    this.worldData = worldGeoJson;
+                    this.regionsData = regionsGeoJson;
+                    
+                    this.processCoffeeData();
+                    this.drawWorldMap();
+                    this.showWelcomeIfNeeded();
+                    
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    alert('Error loading data files. Please check the file paths in CONFIG.');
+                }
+            }
+            
+            processCoffeeData() {
+                this.coffeeData.forEach(d => {
+                    const country = d[CONFIG.countryColumn];
+                    if (COUNTRY_MAPPINGS[country]) {
+                        d[CONFIG.countryColumn] = COUNTRY_MAPPINGS[country];
+                    }
+                });
+                
+                this.coffeeData = this.coffeeData.filter(d => {
+                    const region = d[CONFIG.regionColumn].toLowerCase().trim();
+                    const country = d[CONFIG.countryColumn];
+                    
+                    if (country === 'United States of America') {
+                        if (EXCLUDE_REGION_MAPPINGS.has(region)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+                
+                this.dataByCountry = d3.group(this.coffeeData, d => d[CONFIG.countryColumn]);
+                
+                this.dataByRegion = d3.rollup(
+                    this.coffeeData,
+                    v => ({
+                        count: v.length,
+                        totalBags: d3.sum(v, d => +d[CONFIG.bagsColumn] || 0),
+                        maxBags: d3.max(v, d => +d[CONFIG.bagsColumn] || 0),
+                        records: v
+                    }),
+                    d => d[CONFIG.countryColumn],
+                    d => d[CONFIG.regionColumn]
+                );
+                
+                this.coffeeCountries = new Set(this.coffeeData.map(d => d[CONFIG.countryColumn]));
+            }
+            
+            drawWorldMap() {
+                this.currentView = 'world';
+                this.g.selectAll('*').remove();
+                
+                const filteredData = this.applyFilters(this.coffeeData);
+                const filteredCountries = new Set(filteredData.map(d => d[CONFIG.countryColumn]));
+                
+                const countries = this.worldData.features;
+                
+                this.g.selectAll('.country')
+                    .data(countries)
+                    .join('path')
+                    .attr('class', 'country')
+                    .attr('d', this.path)
+                    .attr('fill', d => {
+                        const countryName = d.properties[CONFIG.worldCountryProperty];
+                        if (filteredCountries.has(countryName)) {
+                            return '#875E3E';
+                        }
+                        return '#e0e0e0';
+                    })
+                    .style('cursor', d => {
+                        const countryName = d.properties[CONFIG.worldCountryProperty];
+                        return filteredCountries.has(countryName) ? 'pointer' : 'default';
+                    })
+                    .on('mouseover', (event, d) => this.showCountryTooltip(event, d, filteredData))
+                    .on('mouseout', () => this.hideTooltip())
+                    .on('click', (event, d) => this.handleCountryClick(event, d));
+                
+                d3.select('#current-view').text('Viewing: World Map');
+                d3.select('#reset-btn').style('display', 'none');
+                this.updateStats(null, filteredData);
+            }
+            
+            drawRegionMap(countryName) {
+                this.currentView = 'region';
+                this.selectedCountry = countryName;
+                this.g.selectAll('*').remove();
+                
+                const countries = this.worldData.features;
+                this.g.selectAll('.country-background')
+                    .data(countries)
+                    .join('path')
+                    .attr('class', 'country-background')
+                    .attr('d', this.path)
+                    .attr('fill', '#e0e0e0')
+                    .attr('stroke', '#fff')
+                    .attr('stroke-width', 0.5);
+                
+                let countryRegions = this.regionsData.features.filter(f => 
+                    this.matchesCountry(f.properties[CONFIG.regionCountryProperty], countryName)
+                );
+                
+                if (countryName === 'United States of America' && countryRegions.length === 0) {
+                    countryRegions = this.regionsData.features.filter(f => 
+                        this.matchesCountry(f.properties[CONFIG.regionCountryProperty], 'UnitedStates')
+                    );
+                }
+                
+                if (countryRegions.length === 0) {
+                    alert(`No coffee data found for ${countryName}`);
+                    this.drawWorldMap();
+                    return;
+                }
+                
+                const filteredData = this.applyFilters(this.coffeeData);
+                const countryFilteredData = filteredData.filter(d => d[CONFIG.countryColumn] === countryName);
+                
+                const regionAggregation = this.aggregateRegionData(countryName, countryFilteredData);
+                
+                const maxBags = d3.max(Array.from(regionAggregation.values()), d => d.totalBags) || 0;
+
+                this.colorScale = d3.scaleSequential()
+                    .domain([0, Math.max(maxBags, 1)])
+                    .interpolator(d3.interpolateRgb.gamma(2.2)("#D9B18C", "#875E3E"));
+
+                this.g.selectAll('.region')
+                    .data(countryRegions)
+                    .join('path')
+                    .attr('class', 'region')
+                    .attr('d', this.path)
+                    .attr('fill', d => {
+                        const regionName = d.properties[CONFIG.regionNameProperty];
+                        const data = regionAggregation.get(regionName);
+                        if (data && data.totalBags > 0) {
+                            return this.colorScale(data.totalBags);
+                        }
+                        return '#e8e8e8';
+                    })
+                    .attr('stroke', '#fff')
+                    .attr('stroke-width', 1)
+                    .style('cursor', 'pointer')
+                    .on('mouseover', (event, d) => this.showRegionTooltip(event, d, countryName, regionAggregation))
+                    .on('mouseout', () => this.hideTooltip())
+                    .on('click', (event, d) => this.handleRegionClick(event, d, countryName, regionAggregation));
+                
+                d3.select('#current-view').html(`Viewing: <strong>${countryName}</strong>`);
+                d3.select('#reset-btn').style('display', 'block');
+                this.updateStats(countryName, countryFilteredData);
+                this.updateRegionLegend(maxBags);
+                
+                this.zoomToFeatures(countryRegions);
+            }
+
+            updateRegionLegend(maxBags) {
+                const statsDiv = d3.select('#stats');
+                const existingLegend = statsDiv.select('.region-legend');
+                if (!existingLegend.empty()) {
+                    existingLegend.remove();
+                }
+
+                const legendDiv = statsDiv.append('div').attr('class', 'region-legend').style('margin-top', '20px').style('padding-top', '15px').style('border-top', '1px solid #ddd');
+                legendDiv.append('strong').text('Production Intensity:');
+                
+                const gradientDiv = legendDiv.append('div')
+                    .style('display', 'flex')
+                    .style('align-items', 'center')
+                    .style('gap', '10px')
+                    .style('margin-top', '8px');
+                
+                gradientDiv.append('div')
+                    .style('width', '120px')
+                    .style('height', '20px')
+                    .style('background', 'linear-gradient(to right, #D9B18C, #875E3E)')
+                    .style('border-radius', '3px')
+                    .style('border', '1px solid #ccc');
+                
+                const labelDiv = legendDiv.append('div')
+                    .style('display', 'flex')
+                    .style('justify-content', 'space-between')
+                    .style('margin-top', '5px')
+                    .style('font-size', '11px')
+                    .style('width', '120px');
+                
+                labelDiv.append('span').text('0 bags');
+                labelDiv.append('span').text(`${maxBags.toLocaleString()} bags`);
+            }
+            
+            aggregateRegionData(countryName, countryData = null) {
+                const dataToAggregate = countryData || this.dataByCountry.get(countryName);
+                
+                if (!dataToAggregate || dataToAggregate.length === 0) {
+                    return new Map();
+                }
+                
+                const csvRegions = d3.group(dataToAggregate, d => d[CONFIG.regionColumn]);
+                const aggregation = new Map();
+                
+                for (let [csvRegion, records] of csvRegions.entries()) {
+                    const geoJsonRegion = this.mapRegionName(csvRegion);
+                    
+                    if (geoJsonRegion) {
+                        if (!aggregation.has(geoJsonRegion)) {
+                            aggregation.set(geoJsonRegion, {
+                                count: 0,
+                                totalBags: 0,
+                                csvRegions: []
+                            });
+                        }
+                        
+                        const agg = aggregation.get(geoJsonRegion);
+                        agg.count += records.length;
+                        agg.totalBags += d3.sum(records, d => +d[CONFIG.bagsColumn] || 0);
+                        agg.csvRegions.push({ 
+                            name: csvRegion, 
+                            count: records.length,
+                            totalBags: d3.sum(records, d => +d[CONFIG.bagsColumn] || 0)
+                        });
+                    }
+                }
+                
+                return aggregation;
+            }
+            
+            mapRegionName(csvRegion) {
+                const normalized = csvRegion.toLowerCase().trim();
+                
+                if (EXCLUDE_REGION_MAPPINGS.has(normalized)) {
+                    return null;
+                }
+                
+                if (REGION_MAPPINGS[normalized]) {
+                    return REGION_MAPPINGS[normalized];
+                }
+                
+                return null;
+            }
+            
+            hasCoffeeData(countryName) {
+                const normalized = normalizeName(countryName);
+                for (let country of this.coffeeCountries) {
+                    if (normalizeName(country) === normalized) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            matchesCountry(name1, name2) {
+                return normalizeName(name1) === normalizeName(name2);
+            }
+            
+            showCountryTooltip(event, d, filteredData = null) {
+                const countryName = d.properties[CONFIG.worldCountryProperty];
+                const data = filteredData ? filteredData.filter(row => row[CONFIG.countryColumn] === countryName) : this.dataByCountry.get(countryName);
+
+                this.showTooltipContent(event, countryName, data);
+            }
+
+            showTooltipContent(event, countryName, data) {
+                let html = `<strong>${countryName}</strong><br/>`;
+
+                if (data && data.length > 0) {
+                    const totalBags = d3.sum(data, d => +d[CONFIG.bagsColumn] || 0);
+                    const regions = new Set(data.map(d => d[CONFIG.regionColumn])).size;
+                    const roastLabel = data.length === 1 ? "Roast" : "Roasts";
+
+                    html += `
+                        Sub-regions with Coffee: ${regions}<br/>
+                        ${data.length} ${roastLabel}<br/>
+                        Bags Produced: ${totalBags.toLocaleString()}
+                    `;
+                } else {
+                    html += `No coffee data available`;
+                }
+
+                const tooltip = this.tooltip
+                    .style('display', 'block')
+                    .html(html);
+
+                const tooltipNode = tooltip.node();
+                const tooltipWidth = tooltipNode.offsetWidth;
+                const tooltipHeight = tooltipNode.offsetHeight;
+
+                const pageWidth = window.innerWidth;
+                const pageHeight = window.innerHeight;
+
+                let left = event.pageX + 15;
+                let top = event.pageY + 15;
+
+                if (left + tooltipWidth > pageWidth) {
+                    left = event.pageX - tooltipWidth - 15;
+                }
+
+                if (top + tooltipHeight > pageHeight) {
+                    top = event.pageY - tooltipHeight - 15;
+                }
+
+                tooltip
+                    .style('left', `${left}px`)
+                    .style('top', `${top}px`);
+            }
+
+            showRegionTooltip(event, d, countryName, regionAggregation) {
+                const regionName = d.properties[CONFIG.regionNameProperty];
+                const data = regionAggregation.get(regionName);
+
+                let html = `<strong>${regionName}</strong><br/>`;
+
+                if (data) {
+                    const csvRegionsList = data.csvRegions
+                        .map(r => `${r.name} (${r.count} ${r.count === 1 ? 'Roast' : 'Roasts'})`)
+                        .join('<br/>  • ');
+
+                    html += `
+                        Sub-regions in Data:<br/>
+                        • ${csvRegionsList}<br/><br/>
+                        Total Roasts: ${data.count}<br/>
+                        Bags Produced: ${data.totalBags.toLocaleString()}
+                    `;
+                } else {
+                    html += `No coffee data available`;
+                }
+
+                const tooltip = this.tooltip
+                    .style('display', 'block')
+                    .html(html);
+
+                const tooltipNode = tooltip.node();
+                const tooltipWidth = tooltipNode.offsetWidth;
+                const tooltipHeight = tooltipNode.offsetHeight;
+
+                const pageWidth = window.innerWidth;
+                const pageHeight = window.innerHeight;
+
+                let left = event.pageX + 15;
+                let top = event.pageY + 15;
+
+                if (left + tooltipWidth > pageWidth) {
+                    left = event.pageX - tooltipWidth - 15;
+                }
+
+                if (top + tooltipHeight > pageHeight) {
+                    top = event.pageY - tooltipHeight - 15;
+                }
+
+                tooltip
+                    .style('left', `${left}px`)
+                    .style('top', `${top}px`);
+            }
+
+            hideTooltip() {
+                this.tooltip.style('display', 'none');
+            }
+            
+            handleCountryClick(event, d) {
+                const countryName = d.properties[CONFIG.worldCountryProperty];
+                this.drawRegionMap(countryName);
+            }
+
+            handleRegionClick(event, d, countryName, regionAggregation) {
+                const regionName = d.properties[CONFIG.regionNameProperty];
+                const filteredData = this.applyFilters(this.coffeeData);
+                const regionData = this.getRegionData(regionName, countryName, filteredData);
+                
+                if (!regionData || regionData.length === 0) {
+                    alert('No data available for this region');
+                    return;
+                }
+
+                this.showMetrics(regionName, regionData);
+            }
+
+            getRegionData(regionName, countryName, countryData) {
+                const csvRegions = d3.group(countryData, d => d[CONFIG.regionColumn]);
+                let allRecords = [];
+                
+                for (let [csvRegion, records] of csvRegions) {
+                    const geoJsonRegion = this.mapRegionName(csvRegion);
+                    if (geoJsonRegion === regionName) {
+                        allRecords = allRecords.concat(records);
+                    }
+                }
+                return allRecords;
+            }
+
+            showMetrics(regionName, regionData) {
+                this.selectedRoast = null;
+                const metricsContent = d3.select('#metrics-content');
+                metricsContent.html('');
+
+                d3.select('#metrics-title').text(`${regionName} - Coffee Metrics`);
+
+                const metricColorScale = d3.scaleLinear()
+                    .domain([0, 10])
+                    .range(['#D9B18C', '#875E3E']);
+
+                const legendBox = metricsContent.append('div').attr('class', 'metric-box');
+                legendBox.append('h4').text('Score Scale');
+                const legendContent = legendBox.append('div').style('display', 'flex').style('align-items', 'center').style('gap', '10px');
+                legendContent.append('div').style('width', '150px').style('height', '25px').style('background', 'linear-gradient(to right, #D9B18C, #875E3E)').style('border-radius', '3px').style('border', '1px solid #ccc');
+                legendContent.append('div').style('display', 'flex').style('justify-content', 'space-between').style('width', '150px').style('font-size', '12px').style('margin-top', '5px');
+                const labelDiv = legendBox.append('div').style('display', 'flex').style('justify-content', 'space-between').style('margin-top', '5px').style('font-size', '12px');
+                labelDiv.append('span').text('0 (Low)');
+                labelDiv.append('span').text('10 (High)');
+
+                const avgMetrics = {};
+                CONFIG.metricColumns.forEach(col => {
+                    const values = regionData
+                        .map(d => +d[col])
+                        .filter(v => !isNaN(v));
+                    avgMetrics[col] = values.length > 0 ? d3.mean(values) : 0;
+                });
+
+                const metricsBox = metricsContent.append('div').attr('class', 'metric-box');
+                metricsBox.append('h4').text('Average Ratings');
+
+                Object.entries(avgMetrics).forEach(([metric, value]) => {
+                    const bar = metricsBox.append('div').attr('class', 'metric-bar');
+                    const displayName = metric === 'Clean.cup' ? 'Clean Cup Rating' : metric;
+                    bar.append('div').attr('class', 'metric-label').text(displayName);
+                    bar.append('div').attr('class', 'metric-fill')
+                        .style('width', `${(value / 10) * 100}%`)
+                        .style('background', metricColorScale(value));
+                    bar.append('div').attr('class', 'metric-value').text(value.toFixed(2));
+                });
+
+                const roastBox = metricsContent.append('div').attr('class', 'metric-box');
+                roastBox.append('h4').text(`Roasts (${regionData.length})`);
+                
+                regionData.forEach((roast, index) => {
+                    const item = roastBox.append('div').attr('class', 'roast-item');
+                    const farmName = roast[CONFIG.farmColumn] && roast[CONFIG.farmColumn].toLowerCase() !== 'nan' ? roast[CONFIG.farmColumn] : 'Unknown';
+                    item.style('cursor', 'pointer')
+                        .on('click', () => this.showRoastDetails(roast, regionName))
+                        .html(`
+                            <strong>Producing Farm: ${farmName}</strong><br/>
+                            Score: ${roast[CONFIG.scoreColumn]} | Bags Produced: ${roast[CONFIG.bagsColumn]}
+                        `);
+                });
+
+                d3.select('#metrics-panel').style('display', 'block');
+            }
+
+            showRoastDetails(roast, regionName) {
+                this.selectedRoast = roast;
+                const metricsContent = d3.select('#metrics-content');
+                metricsContent.html('');
+
+                d3.select('#metrics-title').html(`
+                    <button class="back-button" id="back-to-region">← Back</button>
+                    ${roast[CONFIG.farmColumn]} - ${regionName}
+                `);
+
+                d3.select('#back-to-region').on('click', () => {
+                    this.closeMetrics();
+                    const regionData = this.getRegionDataForRoast(regionName);
+                    this.showMetrics(regionName, regionData);
+                });
+
+                const roastBox = metricsContent.append('div').attr('class', 'metric-box');
+                roastBox.append('h4').text('Roast Details');
+
+                const farmName = roast[CONFIG.farmColumn] && roast[CONFIG.farmColumn].toLowerCase() !== 'nan' ? roast[CONFIG.farmColumn] : 'Unknown';
+                const detailsHtml = `
+                    <div><strong>Farm:</strong> ${roast[CONFIG.farmColumn]}</div>
+                    <div><strong>Country:</strong> ${roast[CONFIG.countryColumn]}</div>
+                    <div><strong>Species:</strong> ${roast[CONFIG.speciesColumn]}</div>
+                    <div><strong>Total Cup Points:</strong> ${roast[CONFIG.scoreColumn]}</div>
+                    <div><strong>Bags Produced:</strong> ${roast[CONFIG.bagsColumn]}</div>
+                    <div><strong>Partner:</strong> ${roast[CONFIG.partnerColumn]}</div>
+                `;
+                roastBox.append('div').html(detailsHtml);
+
+                const metricColorScale = d3.scaleLinear()
+                    .domain([0, 10])
+                    .range(['#D9B18C', '#875E3E']);
+
+                const legendBox = metricsContent.append('div').attr('class', 'metric-box');
+                legendBox.append('h4').text('Score Scale');
+                const legendContent = legendBox.append('div').style('display', 'flex').style('align-items', 'center').style('gap', '10px');
+                legendContent.append('div').style('width', '150px').style('height', '25px').style('background', 'linear-gradient(to right, #D9B18C, #875E3E)').style('border-radius', '3px').style('border', '1px solid #ccc');
+                legendContent.append('div').style('display', 'flex').style('justify-content', 'space-between').style('width', '150px').style('font-size', '12px').style('margin-top', '5px');
+                const labelDiv = legendBox.append('div').style('display', 'flex').style('justify-content', 'space-between').style('margin-top', '5px').style('font-size', '12px');
+                labelDiv.append('span').text('0 (Low)');
+                labelDiv.append('span').text('10 (High)');
+
+                const metricsBox = metricsContent.append('div').attr('class', 'metric-box');
+                metricsBox.append('h4').text('Individual Ratings');
+
+                CONFIG.metricColumns.forEach(metric => {
+                    const value = +roast[metric] || 0;
+                    
+                    const bar = metricsBox.append('div').attr('class', 'metric-bar');
+                    const displayName = metric === 'Clean.cup' ? 'Clean Cup Rating' : metric;
+                    bar.append('div').attr('class', 'metric-label').text(displayName);
+                    bar.append('div').attr('class', 'metric-fill')
+                        .style('width', `${(value / 10) * 100}%`)
+                        .style('background', metricColorScale(value));
+                    bar.append('div').attr('class', 'metric-value').text(value.toFixed(2));
+                });
+            }
+
+            getRegionDataForRoast(regionName) {
+                const filteredData = this.applyFilters(this.coffeeData);
+                let allRecords = [];
+                
+                const csvRegions = d3.group(filteredData, d => d[CONFIG.regionColumn]);
+                for (let [csvRegion, records] of csvRegions) {
+                    const geoJsonRegion = this.mapRegionName(csvRegion);
+                    if (geoJsonRegion === regionName) {
+                        allRecords = allRecords.concat(records);
+                    }
+                }
+                return allRecords;
+            }
+
+            closeMetrics() {
+                d3.select('#metrics-panel').style('display', 'none');
+                this.selectedRoast = null;
+            }
+            
+            showSources() {
+                d3.select('#sources-modal').style('display', 'flex');
+            }
+
+            closeSources() {
+                d3.select('#sources-modal').style('display', 'none');
+            }
+
+            showMetricsDetails() {
+                d3.select('#metrics-details-modal').style('display', 'flex');
+            }
+
+            closeMetricsDetails() {
+                d3.select('#metrics-details-modal').style('display', 'none');
+            }
+
+            closeWelcome() {
+                const dontShow = d3.select('#dontShowAgain').property('checked');
+                if (dontShow) {
+                    localStorage.setItem('hideWelcome', 'true');
+                }
+                d3.select('#welcome-modal').style('display', 'none');
+            }
+
+            showWelcomeIfNeeded() {
+                const hideWelcome = localStorage.getItem('hideWelcome');
+                if (!hideWelcome) {
+                    d3.select('#welcome-modal').style('display', 'flex');
+                } else {
+                    d3.select('#welcome-modal').style('display', 'none');
+                }
+            }
+
+            showWelcome() {
+                d3.select('#welcome-modal').style('display', 'flex');
+            }
+            
+            zoomToFeatures(features) {
+                const bounds = this.path.bounds({
+                    type: 'FeatureCollection',
+                    features: features
+                });
+                
+                const dx = bounds[1][0] - bounds[0][0];
+                const dy = bounds[1][1] - bounds[0][1];
+                const x = (bounds[0][0] + bounds[1][0]) / 2;
+                const y = (bounds[0][1] + bounds[1][1]) / 2;
+
+                const scale = Math.min(8, 0.9 / Math.max(dx / this.width, dy / this.height));
+                const translate = [this.width / 2 - scale * x, this.height / 2 - scale * y];
+                
+                this.svg.transition()
+                    .duration(550)
+                    .call(
+                        this.zoom.transform,
+                        d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
+                    );
+            }
+            
+            resetView() {
+                this.svg.transition()
+                    .duration(750)
+                    .call(this.zoom.transform, d3.zoomIdentity)
+                    .on('end', () => this.drawWorldMap());
+            }
+            
+            updateStats(countryName = null, filteredData = null) {
+                const statsDiv = d3.select('#stats');
+                const dataToUse = filteredData || this.applyFilters(this.coffeeData);
+                
+                if (countryName) {
+                    const data = dataToUse.filter(d => d[CONFIG.countryColumn] === countryName);
+                    if (data && data.length > 0) {
+                        const uniqueRegions = new Set(data.map(d => d[CONFIG.regionColumn]));
+                        const regions = uniqueRegions.size;
+                        const hasEthical = ETHICAL_COUNTRIES.has(countryName) ? 'Yes' : 'No';
+                        statsDiv.html(`
+                            <strong>Country Statistics:</strong><br/>
+                            Sub-regions in Data: ${regions}<br/>
+                            Total Roasts: ${data.length}<br/>
+                            Ethical Coffee Options: ${hasEthical}
+                        `);
+                    }
+                } else {
+                    const totalRegions = dataToUse.reduce((acc, d) => {
+                        acc.add(d[CONFIG.regionColumn]);
+                        return acc;
+                    }, new Set()).size;
+                    
+                    const uniqueCountries = new Set(dataToUse.map(d => d[CONFIG.countryColumn])).size;
+                    const ethicalCountriesInData = Array.from(new Set(dataToUse.map(d => d[CONFIG.countryColumn]))).filter(country => ETHICAL_COUNTRIES.has(country)).length;
+                    
+                    statsDiv.html(`
+                        <strong>Global Statistics:</strong><br/>
+                        Coffee Producing Countries: ${uniqueCountries}<br/>
+                        Ethical Coffee Producing Countries: ${ethicalCountriesInData}<br/>
+                        Coffee Producing Regions: ${totalRegions}<br/>
+                        Total Roasts: ${dataToUse.length}
+                    `);
+                }
+            }
+        }
+        
+        window.addEventListener('load', () => {
+            new CoffeeMap();
+        });
+        
+        window.addEventListener('resize', () => {
+            location.reload();
+        });
+    </script>
+</body>
+</html>
