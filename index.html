@@ -604,8 +604,10 @@
 <body>
     <header>
         <h1>Ethical Coffee Regions Map</h1>
-
-        <a href="#" onclick="window.coffeeMapInstance.showWelcome(); return false;">Help</a>
+        <div class="header-buttons">
+            <button onclick="window.coffeeMapInstance.showMetricsDetails(); return false;">Metrics</button>
+            <button onclick="window.coffeeMapInstance.showWelcome(); return false;">Help</button>
+        </div>
     </header>
     
     <div id="map-container" style="display: flex; flex-direction: column; height: 100vh;">
@@ -849,10 +851,6 @@
     <footer>
         <div>
             <a href="#" onclick="window.coffeeMapInstance.showSources(); return false;">Sources</a>
-            |
-            <a href="#" onclick="window.coffeeMapInstance.showMetricsDetails(); return false;">Metrics</a>
-            |
-            <a href="#" onclick="window.coffeeMapInstance.showWelcome(); return false;">Help</a>
             |
             <span><a href="https://www.linkedin.com/in/andrewplattel/" target="_blank" style="color: #D9B18C; text-decoration: none;">About the Author</a></strong></span>
         </div>
