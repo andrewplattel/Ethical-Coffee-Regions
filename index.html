@@ -128,8 +128,7 @@
         .filter-section h3 {
             margin: 0 0 10px 0;
             font-size: 14px;
-            color: var(--text-color);
-            transition: background 0.3s, color 0.3s;
+            color: #333
         }
 
         .filter-item {
@@ -419,13 +418,15 @@
         }
 
         .sources-content {
-            background: white;
+            background: var(--panel-bg);              
             padding: 40px;
             border-radius: 8px;
             max-width: 600px;
             max-height: 80vh;
             overflow-y: auto;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            color: var(--panel-text);                 
+            transition: background 0.3s, color 0.3s; 
         }
 
         .sources-content h2 {
@@ -467,13 +468,15 @@
         }
 
         .metrics-details-content {
-            background: white;
+            background: var(--panel-bg);              
             padding: 40px;
             border-radius: 8px;
             width: 700px;
             max-height: 80vh;
             overflow-y: auto;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            color: var(--panel-text);                 
+            transition: background 0.3s, color 0.3s; 
         }
 
         .metrics-details-content h2 {
