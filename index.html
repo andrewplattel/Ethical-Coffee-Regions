@@ -532,8 +532,9 @@
         .metric-content {
             display: none;
             padding: 0 15px 15px 15px;
-            background: white;
+            background: var(--panel-bg);
             animation: slideDown 0.3s ease-out;
+            color: var(--panel-text); 
         }
 
         .metric-content.open {
@@ -586,13 +587,15 @@
         }
 
         .welcome-content {
-            background: white;
+            background: var(--panel-bg); 
             padding: 40px;
             border-radius: 8px;
             width: clamp(300px, 90vw, 800px);
             max-height: 80vh;
             overflow-y: auto;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            color: var(--panel-text);                 
+            transition: background 0.3s, color 0.3s;
         }
 
         .welcome-content h2 {
