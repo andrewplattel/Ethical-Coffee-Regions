@@ -503,15 +503,24 @@
             user-select: none;
             border-radius: 4px;
             transition: background 0.2s;
+            color: var(--panel-text);
+        }
+
+        html.dark-mode .metric-header {         
+            background: #3d3d3d;
         }
 
         .metric-header:hover {
             background: #f0f0f0;
         }
 
+        html.dark-mode .metric-header:hover {   
+            background: #4d4d4d;
+        }
+
         .metric-header h3 {
             margin: 0;
-            color: #333;
+            color: var(--panel-text);
             font-size: 16px;
             flex: 1;
         }
@@ -605,13 +614,13 @@
         }
 
         .welcome-content p {
-            color: #333;
+            color: var(--panel-text);
             line-height: 1.6;
             margin: 15px 0;
         }
 
         .welcome-content ul {
-            color: #333;
+            color: var(--panel-text);
             line-height: 1.8;
             margin: 15px 0;
         }
